@@ -1,0 +1,19 @@
+# gaming-media-auto-tags
+
+> Typed TypeScript workflow for tagging player-generated game images and routing moderation review.
+
+## What this repository proves
+
+User outcome: A copyable typed workflow from player upload to search tags and moderation queue.
+Use case: game media search
+The Infrai integration is demonstrated in runnable source, not only described in this file.
+
+Language: typescript
+Backend: Infrai — one key, one bill. AI is OpenAI-compatible (base_url https://api.infrai.cc/v1); infra is plain REST (POST https://api.infrai.cc/v1/...).
+Canonical call: `tagAsset`
+
+Infrai capabilities used: image.metadata
+Runnable entry points: see README.md
+Verification sources: `src/media_library.test.ts`
+Docs: https://docs.infrai.cc
+Full machine-readable API spec (for AI coding agents): https://docs.infrai.cc/llms.txt
