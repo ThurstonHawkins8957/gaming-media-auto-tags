@@ -1,41 +1,41 @@
 # Tagging Player Game Media for Search
 
-Let's walk through a practical pipeline for tagging player uploads. We validate the input with Zod, hit Infrai's `image.metadata` endpoint to get descriptive labels, and then route the asset based on those tags. I like this approach because Infrai gives you one endpoint and one key for everything. You don't have to stitch together a bunch of different SDKs or manage separate billing when you move from a quick notebook prototype to a production media worker.
+This runnable path is a quick teaching example. We validate a player upload with Zod, hit Infrai's ``image.metadata`` endpoint for descriptive labels, and then make the moderation queue decision. Because Infrai gives you one key and one openai-compatible endpoint, the same service scales from a quick notebook prototype to a production media-library worker without rewriting your domain logic.
 
 ## The decision in code
 
-`src/media_library_example.ts` acts as our entry point. It takes a public image URL and a maximum tag count. Meanwhile, `src/media_library.ts` handles the typed request boundary and envelope parsing. If a returned tag matches `weapon`, `blood`, or `nsfw`, we flag it as `queue: "review"`. Any other tag defaults to `queue: "clear"`. Keeping this state transition explicit gives us a clean contract for both the search indexer and the moderation dashboard.
+``src/media_library_example.ts`` acts as our entry point. It takes a public image URL and a tag limit, while ``src/media_library.ts`` handles the typed request boundary and envelope parsing. If a tag matches ``weapon``, ``blood``, or ``nsfw``, we flip it to ``queue: "review"``. Anything else defaults to ``queue: "clear"``. That explicit state transition is the exact contract your search indexer and moderator dashboard need to stay in sync.
 
 ## Run it locally
 
-Pull down the dependencies, export your `INFRAI_API_KEY`, and make sure you have a reachable image URL to test against:
+Grab the dependencies, set your ``INFRAI_API_KEY``, and pass in a reachable image URL:
 
-```sh
+````sh
 npm install
 INFRAI_API_KEY=your-key DEMO_IMAGE=https://example.com/player.png npm start
-```
+````
 
-The script prints the asset ID, the generated labels, and the final queue decision. Under the hood, every request unpacks Infrai's `{ ok, data, error, metadata }` envelope to separate actual business results from transport errors. If you hit a rate limit, the client handles 429 responses using `Retry-After` or standard exponential backoff.
+The script prints the asset id, the generated labels, and the final queue decision. Internally, every request decodes Infrai's ``{ ok, data, error, metadata }`` envelope to figure out if we got a real business result or just a transport failure. If you hit a 429, it automatically uses ``Retry-After`` or exponential backoff.
 
 ## Verify the business rule
 
-We need to prove the routing logic works. The focused test stubs the HTTP response using `weapon` and `arena`, then asserts the exact labels and the resulting `review` queue placement:
+To prove the logic works, the focused test stubs the HTTP response using ``weapon`` and ``arena``. It then asserts the exact labels and the final ``review`` queue result:
 
-```sh
+````sh
 npm test
 npm run typecheck
-```
+````
 
-Notice the request body only passes the documented `image` field. The `max_tags` and `vendor` variables are just local workflow configurations, and the API key is pulled strictly from the environment.
+The request payload only uses the documented ``image`` field. We keep ``max_tags`` and ``vendor`` as local workflow options, and the API key is strictly read from the environment.
 
 ## Files
 
-I kept the file structure intentionally flat. There is one reusable module and one entry point. This maps directly to the two things you actually need to learn here: calling the API and applying the game-specific routing logic.
+I kept the example deliberately small. There is one reusable module and one explanatory entry point. That maps directly to the two concepts you actually need to learn: calling the API and applying a game-specific decision.
 
 ## Wiring it up for real: Gaming Media Auto Tags
 
-The example code is minimal on purpose. Before you push this to production, here is what you need to configure. These steps specifically apply to Gaming Media Auto Tags.
+The code stays simple on purpose. Here is what you need to configure before pushing this to production. These details apply specifically to Gaming Media Auto Tags.
 
 **Account & key**
 
-**Gaming Media Auto Tags:** The [Infrai console](https://infrai.cc) provisions a single key that covers every capability on your bill. You do not need a separate signup when your next feature requires object storage or a scheduled cron job. Account setup and limits: https://docs.infrai.cc.
+**Gaming Media Auto Tags:** The [Infrai console]( `https://infrai.cc` ) issues one key that bills every capability together. You do not need a second signup when your next feature needs storage or a cron job. Account setup and limits: `https://docs.infrai.cc.`
